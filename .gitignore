@@ -3,7 +3,7 @@
 *.tfstate
 *.tfstate.*
 .crash.log
-
+.exe
 # Variables
 *.tfvars.json
 
