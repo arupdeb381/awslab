@@ -59,14 +59,6 @@ resource "aws_subnet" "day04-public-subnet" {
   }
 }
 
-resource "aws_subnet" "day04-private-subnet" {
-  vpc_id            = aws_vpc.day04-vpc.id
-  cidr_block        = "10.0.2.0/24"
-  tags = {
-    env = var.env
-    Name = local.pvt_snet
-  }
-}
 resource "aws_internet_gateway" "day04-igw" {
   vpc_id = aws_vpc.day04-vpc.id
   tags = {
@@ -126,7 +118,7 @@ resource "aws_security_group" "day04-sg" {
 resource "aws_instance" "ec2_instance_01" {
   ami           = "ami-00e801948462f718a" # Amazon Linux 2 AMI (HVM), SSD Volume Type
   instance_type = "t3.micro"
-  subnet_id     = aws_subnet.day04-private-subnet.id
+  subnet_id     = aws_subnet.day04-public-subnet.id
   security_groups = [aws_security_group.day04-sg.id]
   associate_public_ip_address = true
   key_name = "server01" # Replace with your actual key pair name
