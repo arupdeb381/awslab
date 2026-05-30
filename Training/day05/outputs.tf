@@ -1,7 +1,4 @@
-output "public_instance_public_ip" {
-  value = aws_instance.lab04-pub-instance.public_ip
-}
-
-output "private_instance_private_ip" {
-  value = aws_instance.lab04-pvt-instance.private_ip
+# Output the public IP of the public EC2 instance
+output "public_ec2_instance_public_ip" {
+  value = aws_instance.ec2_instance_01.public_ip
 }

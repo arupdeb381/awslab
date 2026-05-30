@@ -1,78 +1,71 @@
+
+##################################################
+
+
 # Create a VPC
-resource "aws_vpc" "lab02-vpc" {
+resource "aws_vpc" "day-vpc" {
   cidr_block = "10.0.0.0/16"
-
   tags = {
-    Name = "lab02-vpc"
+    env = var.env
+    Name = local.vpc_name
   }
-
 }
 
 # Create a public subnet
-resource "aws_subnet" "lab02-public-subnet" {
-  vpc_id            = aws_vpc.lab02-vpc.id
+resource "aws_subnet" "day-public-subnet" {
+  vpc_id            = aws_vpc.day-vpc.id
   cidr_block        = "10.0.1.0/24"
-  availability_zone = "us-east-1a"
   tags = {
-    Name = "lab02-public-subnet"
+    env = var.env
+    Name = local.pub_snet
   }
 }
 
-# Create a private subnet
-resource "aws_subnet" "lab02-private-subnet" {
-  vpc_id            = aws_vpc.lab02-vpc.id
-  cidr_block        = "10.0.2.0/24"
-  availability_zone = "us-east-1a"
-
+resource "aws_internet_gateway" "day-igw" {
+  vpc_id = aws_vpc.day-vpc.id
   tags = {
-    Name = "lab02-private-subnet"
+    env = var.env
+    Name = local.igw_name
   }
 }
 
-# Create an Internet Gateway
-resource "aws_internet_gateway" "lab02-igw" {
-  vpc_id = aws_vpc.lab02-vpc.id
-
+resource "aws_route_table" "day-public-rt" {
+  vpc_id = aws_vpc.day-vpc.id
   tags = {
-    Name = "lab02-igw"
+    env = var.env
+    Name = local.pub_rt_name
   }
 }
 
-# Create a route table for the public subnet
-resource "aws_route_table" "lab02-public-rt" {
-  vpc_id = aws_vpc.lab02-vpc.id
-
-  tags = {
-    Name = "lab02-public-rt"
-  }
-}
-
-# Create a route to the Internet Gateway
-resource "aws_route" "lab02-public-route" {
-  route_table_id         = aws_route_table.lab02-public-rt.id
+resource "aws_route" "day-public-route" {
+  route_table_id         = aws_route_table.day-public-rt.id
   destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = aws_internet_gateway.lab02-igw.id
+  gateway_id             = aws_internet_gateway.day-igw.id
 }
 
-# Associate the public subnet with the public route table
-resource "aws_route_table_association" "lab02-public-subnet-association" {
-  subnet_id      = aws_subnet.lab02-public-subnet.id
-  route_table_id = aws_route_table.lab02-public-rt.id
+resource "aws_route_table_association" "day-public-rt-association" {
+  subnet_id      = aws_subnet.day-public-subnet.id
+  route_table_id = aws_route_table.day-public-rt.id
 }
 
-
-
-resource "aws_security_group" "lab02-public-sg" {
-  name        = "lab02-public-sg"
-  description = "Allow SSH and HTTP access"
-  vpc_id      = aws_vpc.lab02-vpc.id
+resource "aws_security_group" "day-sg" {
+  name        = local.sg_name
+  description = "Allow SSH and HTTP traffic"
+  vpc_id      = aws_vpc.day-vpc.id
 
   ingress {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
-    }
+  }
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
   egress {
     from_port   = 0
@@ -80,17 +73,20 @@ resource "aws_security_group" "lab02-public-sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+ 
 }
 
-resource "aws_security_group" "lab02-private-sg" {
-  name        = "lab02-private-sg"
-  description = "Allow internal access"
-  vpc_id      = aws_vpc.lab02-vpc.id
-
-  ingress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = [aws_vpc.lab02-vpc.cidr_block]
+# Create EC2 instaance
+resource "aws_instance" "ec2_instance_01" {
+  ami           = "ami-00e801948462f718a" # Amazon Linux 2 AMI (HVM), SSD Volume Type
+  instance_type = "t3.micro"
+  subnet_id     = aws_subnet.day-public-subnet.id
+  security_groups = [aws_security_group.day-sg.id]
+  associate_public_ip_address = true
+  key_name = "server01" # Replace with your actual key pair name
+  tags = {
+    env = var.env
+    Name = local.ec2_instance_name
   }
 }
+
