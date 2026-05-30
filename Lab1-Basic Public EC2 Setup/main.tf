@@ -4,7 +4,7 @@
 # -----------------------------------------------------------------------------
 terraform {
   backend "s3" {
-    bucket = "arup-lab1-basic-public-ec2-setup"
+    bucket = "arup-lab-aws-training"
     key    = "lab1/terraform.tfstate"
     region = "us-east-1"
     encrypt = true
