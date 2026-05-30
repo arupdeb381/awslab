@@ -23,13 +23,3 @@ resource "aws_instance" "private_ec2_instance" {
     Name = "PrivateEC2Instance"
   }
 }
-
-# Output the public IP of the public EC2 instance
-output "public_ec2_instance_public_ip" {
-  value = aws_instance.public_ec2_instance.public_ip
-}
-
-# Output the public IP of the private EC2 instance
-output "private_ec2_instance_public_ip" {
-  value = aws_instance.private_ec2_instance.public_ip
-}
