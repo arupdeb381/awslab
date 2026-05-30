@@ -1,1 +1,1 @@
-env = "day06"
+env = "day05"
