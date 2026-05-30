@@ -16,4 +16,5 @@ resource "aws_instance" "ec2_instance_01" {
   }
 }
 
+## new
 
