@@ -51,10 +51,10 @@ resource "aws_security_group" "day-sg" {
   vpc_id      = aws_vpc.day-vpc.id
 
   ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    from_port   = var.ingress_values[0]
+    to_port     = var.ingress_values[1]
+    protocol    = var.ingress_values[2]
+    cidr_blocks = [var.vpc_cidrs[0], var.vpc_cidrs[2]]
   }
 
   ingress {
@@ -71,4 +71,5 @@ resource "aws_security_group" "day-sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
  
+
 }
