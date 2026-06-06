@@ -79,13 +79,24 @@ resource "aws_security_group" "sg_minikube" {
     name        = "minikube-sg"
     description = "Security group for MiniKube lab"
     vpc_id      = aws_vpc.minikube_vpc.id
-    tags        = var.tags
+    tags        = merge(
+        var.tags,
+        {
+            Name = "minikube-sg"
+        }
+    ) # Merge default tags with a specific Name tag for the security group
     
     ingress {
         from_port   = 22
         to_port     = 22
         protocol    = "tcp"
         cidr_blocks = ["104.30.167.32/32"] # Allow SSH from Arup's IP
+    }
+    ingress {
+        from_port   = 8443
+        to_port     = 8443
+        protocol    = "tcp"
+        cidr_blocks = ["104.30.167.32/32"] # Allow minikube from Arup's IP
     }
     egress {
         from_port   = 0
