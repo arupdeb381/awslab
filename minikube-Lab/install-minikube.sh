@@ -2,7 +2,6 @@
 
 /usr/bin/hostnamectl set-hostname minikube-node
 
-
 LOG_FILE="/home/ec2-user/minikube-install.log"
 
 exec > >(tee -a ${LOG_FILE})
@@ -10,10 +9,10 @@ exec 2>&1
 
 set -e
 
-yum update -y
 echo "========================================"
 echo "Installing Docker"
 echo "========================================"
+
 yum install -y docker
 
 systemctl enable docker
@@ -22,14 +21,14 @@ systemctl start docker
 echo "========================================"
 echo "Adding ec2-user to docker group"
 echo "========================================"
+
 usermod -aG docker ec2-user
 
 echo "========================================"
 echo "Installing kubectl"
 echo "========================================"
 
-curl -LO "https://dl.k8s.io/release/$(curl -L -s \
-https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
 
 install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 
@@ -49,11 +48,7 @@ echo "========================================"
 echo "Starting Minikube"
 echo "========================================"
 
-sudo -u ec2-user /usr/local/bin/minikube start \
-  --driver=docker \
-  --cpus=2 \
-  --memory=3000mb
-
+sudo -u ec2-user /usr/local/bin/minikube start --driver=docker --cpus=2 --memory=3000mb 
 echo "========================================"
 echo "Cluster Status"
 echo "========================================"
@@ -61,49 +56,82 @@ echo "========================================"
 sudo -u ec2-user /usr/local/bin/kubectl get nodes
 
 echo "========================================"
-echo "Minikube installation completed"
+echo "Enabling Dashboard"
 echo "========================================"
 
-echo "========================================"
-echo "Configuring Remote Access"
-echo "========================================"
+sudo -u ec2-user /usr/local/bin/minikube addons enable dashboard
 
-/usr/sbin/usermod -aG docker ec2-user
-
+echo "Waiting for dashboard pods..."
+sleep 30
 
 echo "========================================"
-echo "Get Minikube IP dynamically"
+echo "Creating Dashboard Admin User"
 echo "========================================"
 
-MINIKUBE_IP=$(sudo -u ec2-user /usr/local/bin/minikube ip)
+cat <<EOF | sudo -u ec2-user /usr/local/bin/kubectl apply -f -
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+name: admin-user
+namespace: kubernetes-dashboard
+EOF
 
+cat <<EOF | sudo -u ec2-user /usr/local/bin/kubectl apply -f -
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+name: admin-user
+roleRef:
+apiGroup: rbac.authorization.k8s.io
+kind: ClusterRole
+name: cluster-admin
+subjects:
+
+* kind: ServiceAccount
+  name: admin-user
+  namespace: kubernetes-dashboard
+  EOF
 
 echo "========================================"
-echo "Installing socat"
-echo "========================================"
-yum install -y socat
-
-echo "========================================"
-echo "Forward EC2:8443 -> Minikube:8443"
+echo "Exposing Dashboard"
 echo "========================================"
 
-nohup socat TCP-LISTEN:8443,fork,reuseaddr TCP:${MINIKUBE_IP}:8443 >/dev/null 2>&1 &
-
+sudo -u ec2-user /usr/local/bin/kubectl patch svc kubernetes-dashboard -n kubernetes-dashboard --type='json' -p='[{"op":"replace","path":"/spec/type","value":"NodePort"}, {"op":"add","path":"/spec/ports/0/nodePort","value":30080} ]' || true
 
 echo "========================================"
-echo "Get EC2 Public IP"
+echo "Generating Dashboard Token"
 echo "========================================"
+
+TOKEN=$(sudo -u ec2-user /usr/local/bin/kubectl -n kubernetes-dashboard create token admin-user)
 
 PUBLIC_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)
 
+cat > /home/ec2-user/dashboard-info.txt <<EOF
+
+========================================
+MINIKUBE DASHBOARD ACCESS
+=========================
+
+Dashboard URL:
+
+https://${PUBLIC_IP}:30080
+
+Login Token:
+
+${TOKEN}
+
+========================================
+
+EOF
+
+chown ec2-user:ec2-user /home/ec2-user/dashboard-info.txt
+
 echo "========================================"
-echo "Remote API Endpoint will be accessible at:"
+echo "Installation Complete"
 echo "========================================"
 
-
-sudo -u ec2-user sed -i \
-  "s|server: https://.*:8443|server: https://${PUBLIC_IP}:8443|g" \
-  /home/ec2-user/.kube/config
-
-echo "Remote API Endpoint:"
-echo "https://${PUBLIC_IP}:8443"
+echo ""
+echo "Dashboard Details Saved To:"
+echo "/home/ec2-user/dashboard-info.txt"
+echo ""
+cat /home/ec2-user/dashboard-info.txt

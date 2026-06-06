@@ -98,6 +98,12 @@ resource "aws_security_group" "sg_minikube" {
         protocol    = "tcp"
         cidr_blocks = ["104.30.167.32/32"] # Allow minikube from Arup's IP
     }
+    ingress {
+        from_port   = 30000
+        to_port     = 32767
+        protocol    = "tcp"
+        cidr_blocks = ["104.30.167.32/32"] # Allow minikube from Arup's IP
+    }
     egress {
         from_port   = 0
         to_port     = 0
