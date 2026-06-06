@@ -70,19 +70,37 @@ echo "========================================"
 
 /usr/sbin/usermod -aG docker ec2-user
 
-# Get Minikube IP dynamically
-MINIKUBE_IP=$(sudo -u ec2-user minikube ip)
 
-# Install socat
+echo "========================================"
+echo "Get Minikube IP dynamically"
+echo "========================================"
+
+MINIKUBE_IP=$(sudo -u ec2-user /usr/local/bin/minikube ip)
+
+
+echo "========================================"
+echo "Installing socat"
+echo "========================================"
 yum install -y socat
 
-# Forward EC2:8443 -> Minikube:8443
+echo "========================================"
+echo "Forward EC2:8443 -> Minikube:8443"
+echo "========================================"
+
 nohup socat TCP-LISTEN:8443,fork,reuseaddr TCP:${MINIKUBE_IP}:8443 >/dev/null 2>&1 &
 
-# Get EC2 Public IP
+
+echo "========================================"
+echo "Get EC2 Public IP"
+echo "========================================"
+
 PUBLIC_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)
 
-# Update kubeconfig
+echo "========================================"
+echo "Remote API Endpoint will be accessible at:"
+echo "========================================"
+
+
 sudo -u ec2-user sed -i \
   "s|server: https://.*:8443|server: https://${PUBLIC_IP}:8443|g" \
   /home/ec2-user/.kube/config
