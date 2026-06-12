@@ -35,6 +35,12 @@ variable "tags" {
   }
 }
 
+variable "ssh_private_key_path" {
+  type        = string
+  description = "Path to the private key used to connect to EC2 for post-bootstrap checks"
+  default     = "../LAB/Lab3-Bastion Host Architecture/server01.pem"
+}
+
 # VPC configuration
 resource "aws_vpc" "minikube_vpc" {
   cidr_block = "10.0.0.0/16"
@@ -92,18 +98,6 @@ resource "aws_security_group" "sg_minikube" {
         protocol    = "tcp"
         cidr_blocks = ["104.30.167.32/32"] # Allow SSH from Arup's IP
     }
-    ingress {
-        from_port   = 8443
-        to_port     = 8443
-        protocol    = "tcp"
-        cidr_blocks = ["104.30.167.32/32"] # Allow minikube from Arup's IP
-    }
-    ingress {
-        from_port   = 30000
-        to_port     = 32767
-        protocol    = "tcp"
-        cidr_blocks = ["104.30.167.32/32"] # Allow minikube from Arup's IP
-    }
     egress {
         from_port   = 0
         to_port     = 0
@@ -117,12 +111,29 @@ resource "aws_instance" "minikube_instance" {
     ami           = "ami-0c94855ba95c71c99" # Amazon Linux 2 AMI
     instance_type = "t2.medium"
     subnet_id     = aws_subnet.minikube_subnet.id
-    security_groups = [aws_security_group.sg_minikube.id]
+    vpc_security_group_ids = [aws_security_group.sg_minikube.id]
     tags          = var.tags
     associate_public_ip_address = true
     key_name = "server01" # Replace with your actual key pair name
     user_data = file("${path.module}/install-minikube.sh") # Script to install MiniKube on the EC2 instance
+    user_data_replace_on_change = true
+
+    # Block terraform apply until cloud-init (user_data) has finished.
+    provisioner "remote-exec" {
+      inline = [
+        "sudo bash -lc 'while true; do status=$(cloud-init status | head -n1 | cut -d\" \" -f2); if [ \"$status\" = \"done\" ]; then echo \"cloud-init completed.\"; break; fi; if [ \"$status\" = \"error\" ]; then echo \"cloud-init failed.\"; cloud-init status --long; exit 1; fi; echo \"cloud-init in progress....\"; sleep 5; done'",
+        "grep -q 'Installation Complete' /home/ec2-user/minikube-install.log"
+      ]
     }
+
+    connection {
+      type        = "ssh"
+      host        = self.public_ip
+      user        = "ec2-user"
+      private_key = file(var.ssh_private_key_path)
+      timeout     = "45m"
+    }
+}
 
 # Output the public IP of the EC2 instance
 output "minikube_instance_public_ip" {

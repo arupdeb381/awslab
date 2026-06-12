@@ -11,6 +11,7 @@ resource "aws_instance" "lab01-ec2-01" {
 
     # access
     key_name = "server01"
+    iam_instance_profile = aws_iam_instance_profile.lab01_ssm_instance_profile.name
 
     # userdata
     user_data = templatefile("${path.module}/userdata.sh", {
@@ -20,6 +21,7 @@ resource "aws_instance" "lab01-ec2-01" {
 
     tags = {
         Name = "lab01-ec2-instance-01"
+        "Patch Group" = aws_ssm_patch_group.lab01_patch_group.patch_group
     }
 }
 
@@ -37,6 +39,7 @@ resource "aws_instance" "lab01-ec2-02" {
 
     # access
     key_name = "server01"
+    iam_instance_profile = aws_iam_instance_profile.lab01_ssm_instance_profile.name
 
     # userdata
     user_data = templatefile("${path.module}/userdata.sh", {
@@ -46,6 +49,7 @@ resource "aws_instance" "lab01-ec2-02" {
 
     tags = {
         Name = "lab01-ec2-instance-02"
+        "Patch Group" = aws_ssm_patch_group.lab01_patch_group.patch_group
     }
 }
 
